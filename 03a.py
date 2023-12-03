@@ -24,14 +24,14 @@ def main(input_file: str):
             symbol[y] = []
             x = 0
             while x < len(line):
-                if line[x] not in DIGITS | {'.'}:
-                    symbol[y] += [x]
-                elif line[x] != '.':
+                if line[x] in DIGITS:
                     to = x + 1
                     while to < len(line) and line[to] in DIGITS:
                         to += 1
                     number[y] += [(x - 1, to, int(line[x:to]))]
                     x = to - 1
+                elif line[x] != '.':
+                    symbol[y] += [x]
                 x += 1
             y += 1
 
