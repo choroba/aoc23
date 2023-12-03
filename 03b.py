@@ -1,8 +1,10 @@
 #! /usr/bin/python3
 import sys
 
-number={}
-star={}
+from typing import Dict, Tuple, List
+
+number: Dict[int, List[Tuple[int, int, int]]] = {}
+star: Dict[int, List[int]] = {}
 with open(sys.argv[1], 'r') as fh:
     y = 0
     for line in fh:
