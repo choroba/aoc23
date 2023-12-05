@@ -7,29 +7,25 @@ use ARGV::OrDATA;
 use List::Util qw{ min };
 
 my @seeds = split ' ', (split /: /, <>)[1];
-my %map;
-@{ $map{seed} }{@seeds} = (@seeds);
-my @type;
+my %map = map +($_, $_), @seeds;
 while (<>) {
     chomp;
     next if "" eq $_;
 
-    if (/^(\w+)-to-(\w+) map:$/) {
-        @type = ($1, $2);
-        @{ $map{ $type[1] } }{ values %{ $map{ $type[0] } } }
-            = values %{ $map{ $type[0] } };
+    if (/:$/) {
+        %map = map +($_, $_),  values %map;
 
     } else {
         my ($dest_start, $src_start, $length) = split ' ';
-        for my $seed (keys %{ $map{ $type[1] } }) {
+        for my $seed (keys %map) {
             next if $seed < $src_start || $seed > $src_start + $length;
 
-            $map{ $type[1] }{$seed} = $seed - $src_start + $dest_start;
+            $map{$seed} = $seed - $src_start + $dest_start;
         }
     }
 }
 
-say min(values %{ $map{ $type[1] } });
+say min(values %map);
 
 __DATA__
 seeds: 79 14 55 13
