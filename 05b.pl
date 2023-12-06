@@ -14,7 +14,6 @@ while (@in) {
     push @map, [$from, $from + $range - 1, 0];
 }
 
-my @type;
 while (<>) {
     chomp;
     next if "" eq $_;
