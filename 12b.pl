@@ -6,7 +6,11 @@ use experimental qw( signatures );
 
 use ARGV::OrDATA;
 
-my %cache;
+use threads;
+use threads::shared;
+use Thread::Queue;
+
+my  %cache;
 sub count($left, @g) {
     return $cache{$left}{"@g"} if exists $cache{$left}
                                && exists $cache{$left}{"@g"};
@@ -55,7 +59,19 @@ sub count($left, @g) {
     }
 }
 
-my $count = 0;
+my $qin  = 'Thread::Queue'->new;
+my $qout = 'Thread::Queue'->new;
+
+my @workers = map 'threads'->create(
+    sub {
+        while (defined( my $in = $qin->dequeue )) {
+            my ($left, @g) = @$in;
+            $qout->enqueue(count($left, @g));
+        }
+    }
+), 1 .. 8;
+$_->detach for @workers;
+
 while (<>) {
     print {*STDERR} "$. \r";
     my ($left, $right) = split;
@@ -64,7 +80,15 @@ while (<>) {
     $left =~ s/\.+/./g;
     $left =~ s/^\.//;
     $left =~ s/\.$//;
-    $count += count($left, split /,/, $right);
+    $qin->enqueue([$left, split /,/, $right]);
+}
+
+$qin->end;
+
+my $count = 0;
+for (1 .. $.) {
+    my $r = $qout->dequeue;
+    $count += $r;
 }
 
 say $count;
