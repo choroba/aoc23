@@ -85,37 +85,40 @@ while (my $line = <>) {
 }
 
 my %repeat;
-my @values;
-my $previous = -2;
-my $s;
-my $LAST = 300;  # Might be higher for some inputs.
-for my $c (0 .. $LAST) {
+my @values = (-1);  # Disregard the initial load.
+my $last = 0;
+while (1) {
     my $v = cycle(\@dish);
     push @values, $v;
-    push @{ $repeat{$v} }, $c;
+    my $key = join "", map @$_, @dish;
+    last if $repeat{$key}++ > 2;
+
+    ++$last;
 }
 
 my ($start, $length);
 LENGTH:
-for my $l (2 .. 100) {
-    my $s = $LAST - $l * 2;
-    for my $i ( $s .. $LAST) {
+for my $l (2 .. $#values) {
+    my $s = $last - $l * 2;
+    for my $i ( $s .. $#values) {
         my $at = $s + (($i - $s) % $l);
         next LENGTH unless $values[$i] == $values[$at];
     }
-    $start  = $s;
+    $start  = $s - $l + 1;
     $length = $l;
     last LENGTH
 }
 
-# Check.
-for my $i ($start / 2 .. $LAST) {
-    my $at = $start + (($i - $start) % $length);
-    die "$at \@ $i: $values[$i] != $values[$at]"
-        unless $values[$i] == $values[$at];
-}
+# # Check.
+# say "Start: $start. Length: $length";
+# say "Check: ", $start, " .. $last";
+# for my $i ($start .. $last) {
+#     my $at = $start + (($i - $start) % $length);
+#     die "$at \@ $i: $values[$i] != $values[$at]"
+#         unless $values[$i] == $values[$at];
+# }
 
-my $i = 1000000000 - 1;
+my $i = 1000000000;
 my $at = $start + (($i - $start) % $length);
 say $values[$at];
 
