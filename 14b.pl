@@ -5,6 +5,7 @@ use feature qw{ say };
 use experimental qw( signatures );
 
 use ARGV::OrDATA;
+use Storable qw{ dclone };
 
 sub north($dish) {
     for my $y (0 .. $#$dish) {
@@ -70,12 +71,23 @@ sub count($dish) {
     return $load
 }
 
+my %cache;
 sub cycle($dish) {
+    my $k = join "", map @$_, @$dish;
+    if (exists $cache{$k}) {
+        @$dish = @{ $cache{$k}[2] };
+        return @{ $cache{$k} }[0, 1]
+    }
+
     north($dish);
     west($dish);
     south($dish);
     east($dish);
-    return count($dish)
+
+    my $c = count($dish);
+    my $key_out = join "", map @$_, @$dish;
+    $cache{$k} = [$c, $key_out, dclone($dish)];
+    return $c, $key_out
 }
 
 my @dish;
@@ -88,9 +100,8 @@ my %repeat;
 my @values = (-1);  # Disregard the initial load.
 my $last = 0;
 while (1) {
-    my $v = cycle(\@dish);
+    my ($v, $key) = cycle(\@dish);
     push @values, $v;
-    my $key = join "", map @$_, @dish;
     last if $repeat{$key}++ > 2;
 
     ++$last;
