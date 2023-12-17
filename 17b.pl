@@ -6,6 +6,11 @@ use feature qw{ say };
 use ARGV::OrDATA;
 use List::Util qw{ min };
 
+use constant {  # Use 1, 3 to solve Part 1.
+    MIN_STRAIGHT => 4,
+    MAX_STRAIGHT => 10,
+};
+
 my @DIRECTIONS = ([0, 1], [1, 0], [-1, 0], [0, -1]);
 
 my @map;
@@ -16,8 +21,8 @@ while (<>) {
 
 # heat[y][x][dir][straight]
 my @heat;
-$heat[0][0][2][9] = 0;
-$heat[0][0][3][9] = 0;
+$heat[0][0][2][ MAX_STRAIGHT - 1 ] = 0;
+$heat[0][0][3][ MAX_STRAIGHT - 1 ] = 0;
 
 while (1) {
     my $change;
@@ -38,7 +43,7 @@ while (1) {
                          && $direction_in->[1] == -$direction_out->[1];
 
                     if ($d_in == $d_out) {
-                        for my $s (1 .. 9) {
+                        for my $s (1 .. MAX_STRAIGHT - 1) {
                             next unless $heat[$y][$x][$d_out][$s - 1];
 
                             my $h = $heat[$y][$x][$d_in][$s - 1]
@@ -48,10 +53,10 @@ while (1) {
                                 || $h < $heat[$ny][$nx][$d_out][$s];
                         }
                     } else {
-                        my $best = min(grep defined, (
-                            @{ $heat[$y][$x][$d_in] // [] },
-                            (undef) x 10
-                        )[3 .. 9]);
+                        my $best = min(grep defined,
+                                       @{ $heat[$y][$x][$d_in] // [] }[
+                                           MIN_STRAIGHT - 1 .. MAX_STRAIGHT - 1
+                                       ]);
                         next unless defined $best;
 
                         my $h = $map[$ny][$nx] + $best;
@@ -67,7 +72,8 @@ while (1) {
 }
 
 say min(grep defined,
-        map +(@{ $_ // [] })[3 .. 9], @{ $heat[$#map][ $#{ $map[0] } ] });
+        map @{ $_ // [] }[MIN_STRAIGHT - 1 .. MAX_STRAIGHT - 1],
+        @{ $heat[$#map][ $#{ $map[0] } ] });
 
 __DATA__
 2413432311323
