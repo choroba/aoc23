@@ -2,7 +2,6 @@
 use warnings;
 use strict;
 use feature qw{ say };
-use experimental qw( signatures );
 
 use ARGV::OrDATA;
 
@@ -10,50 +9,51 @@ my %DIRECTION = (R => [ 0,  1],
                  L => [ 0, -1],
                  U => [-1,  0],
                  D => [ 1,  0]);
+my @DIRECTION = qw( R D L U );
 
-sub fill($y, $x, $lagoon, $ymin, $ymax, $xmin, $xmax) {
-    no warnings 'recursion';
-    $lagoon->{$y}{$x} = 1;
-    fill($y - 1, $x, $lagoon, $ymin, $ymax, $xmin, $xmax)
-        if $y > $ymin && ! exists $lagoon->{$y - 1}{$x};
-    fill($y, $x - 1, $lagoon, $ymin, $ymax, $xmin, $xmax)
-        if $x > $xmin  && ! exists $lagoon->{$y}{$x - 1};
-    fill($y + 1, $x, $lagoon, $ymin, $ymax, $xmin, $xmax)
-        if $y < $ymax  && ! exists $lagoon->{$y + 1}{$x};
-    fill($y, $x + 1, $lagoon, $ymin, $ymax, $xmin, $xmax)
-        if $x < $xmax  && ! exists $lagoon->{$y}{$x + 1};
-}
+# Correction of previous step y, x; extra step y, x
+my %TURN = (RU => [ 0,  0,  0,  1,  0,  0, -1,  0],
+            RD => [ 0,  1,  0,  0,  1,  0,  0,  0],
+            LU => [ 0, -1,  0,  0, -1,  0,  0,  0],
+            LD => [ 0,  0,  0, -1,  0,  0,  1,  0],
+            UL => [ 0,  0, -1,  0,  0,  0,  0, -1],
+            UR => [-1,  0,  0,  0,  0,  1,  0,  0],
+            DL => [ 1,  0,  0,  0,  0, -1,  0,  0],
+            DR => [ 0,  0,  1,  0,  0,  0,  0,  1]);
 
-my %lagoon;
-my ($x, $y) = (0, 0);
-my ($xmin, $xmax, $ymin, $ymax) = (0, 0, 0, 0);
+my @instructions;
 while (<>) {
     my ($direction, $distance) = split ' ';
-    for my $step (1 .. $distance) {
-        $y += $DIRECTION{$direction}[0];
-        $x += $DIRECTION{$direction}[1];
-        $lagoon{$y}{$x} = 1;
-        $xmin = $x if $x < $xmin;
-        $ymin = $y if $y < $ymin;
-        $xmax = $x if $x > $xmax;
-        $ymax = $y if $y > $ymax;
-    }
+    push @instructions, [$distance, $direction];
 }
 
-my $j = $ymin;
-my $i = $xmin;
-++$j until exists $lagoon{$j}{$i};
-++$j;
-++$i;
-fill($j, $i, \%lagoon, $ymin, $ymax, $xmin, $xmax);
+my $prev_dir = $instructions[-1][1];
+my @vertices = ([0, 0, 0, 0]);
+for my $instruction (@instructions) {
+    my ($distance, $direction) = @$instruction;
 
-my $count = 0;
-for my $j ($ymin .. $ymax) {
-    for my $i ($xmin .. $xmax) {
-        ++$count if $lagoon{$j}{$i};
-    }
+    my $turn = $TURN{ $prev_dir . $direction };
+    my $prev = $vertices[-1];
+    $prev->[$_] += $turn->[$_] for 0 .. 3;
+
+    push @vertices, [
+        map $prev->[$_]
+            + $DIRECTION{$direction}[ $_ % 2 ] * ($distance - 1)
+            + $turn->[ $_ + 4 ],
+        0 .. 3];
+    $prev_dir = $direction;
 }
-say $count;
+$vertices[-1] = $vertices[0];
+
+my @dig;
+for my $i (0 .. $#vertices - 1) {
+    $dig[0] += $vertices[ $i + 1 ][1] * $vertices[$i][0]
+             - $vertices[ $i + 1 ][0] * $vertices[$i][1];
+    $dig[1] += $vertices[ $i + 1 ][3] * $vertices[$i][2]
+             - $vertices[ $i + 1 ][2] * $vertices[$i][3];
+}
+
+say +(sort { $b <=> $a } map abs($_) / 2, @dig)[0];
 
 __DATA__
 R 6 (#70c710)
