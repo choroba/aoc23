@@ -1,0 +1,106 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+use feature qw{ say };
+
+use ARGV::OrDATA;
+
+my ($sy, $sx);
+my @garden;
+while (<>) {
+    chomp;
+    push @garden, [split //];
+    ($sy, $sx) = ($. - 1, pos($_) - 1) if /S/g;
+}
+$garden[$sy][$sx] = '.';
+
+my @MOVES = ([0, 1], [0, -1], [1, 0], [-1, 0]);
+my %ACCESS;
+for my $y (0 .. $#garden) {
+    for my $x (0 .. $#{ $garden[0] }) {
+        for my $move (@MOVES) {
+            my ($ny, $nx) = ($y + $move->[0], $x + $move->[1]);
+            push @{ $ACCESS{$y}{$x} }, $move
+                if '.' eq $garden[ $ny % @garden ][ $nx % @{ $garden[0] } ];
+        }
+    }
+}
+
+my @reach = (0);
+my @diff;
+my @agenda = ([$sy, $sx]);
+
+open my $gnuplot, '|-', 'gnuplot' or die $!;
+say {$gnuplot} 'set term png tiny size 640,480;',
+               'set output "21-2.png";';
+my $period = 0;
+
+my $i = 0;
+EXPANSION:
+while (! $period) {
+    ++$i;
+    say "Expanding to $i.";
+    my %next;
+    for my $pos (@agenda) {
+        my ($y, $x) = @$pos;
+
+        for my $move (@{ $ACCESS{ $y % @garden }{ $x % @{ $garden[0] } } }) {
+            my $ny = $y + $move->[0];
+            my $nx = $x + $move->[1];
+            undef $next{$ny}{$nx}
+        }
+    }
+    @agenda = ();
+    for my $y (keys %next) {
+        for my $x (keys %{ $next{$y} }) {
+            push @agenda, [$y, $x];
+        }
+    }
+    $reach[$i] = @agenda;
+    $diff[$i]  = $reach[$i] - $reach[ $i - 1 ];
+
+    next if $i % 66 != 0;
+
+  PERIOD:
+    for my $p (2 .. $i / 3 - 1) {
+        say "Trying period $p at size $i.";
+        for my $from ($i - $p .. $i) {
+            next PERIOD
+                if $diff[$from] - $diff[ $from - $p ]
+                   != $diff[ $from - $p ] - $diff[ $from - 2 * $p ];
+        }
+        last PERIOD unless $p;
+
+        say "Found $p";
+        while ($i++ < 9 * $p) {
+            $diff[$i] = 2 * $diff[ $i - $p ] - $diff[ $i - 2 * $p ];
+            $reach[$i] = $reach[ $i - 1 ] + $diff[ $i ];
+        }
+
+        $period = $p;
+        last EXPANSION
+    }
+}
+
+print {$gnuplot} 'plot "-" w lines title "0"',
+                 map ',"" w lines title "' . $_ . '"', 1 .. $period - 1;
+print {$gnuplot} ";\n";
+for my $from (1 .. $period) {
+    say {$gnuplot} $diff[$from + $_ * $period] for 0 .. 8;
+    say {$gnuplot} 'e';
+}
+
+close $gnuplot;
+
+__DATA__
+...........
+.....###.#.
+.###.##..#.
+..#.#...#..
+....#.#....
+.##..S####.
+.##..#...#.
+.......##..
+.##.#.####.
+.##..##.##.
+...........
